@@ -2,35 +2,52 @@ import Modal from "./Modal";
 import NewPost from "./NewPost";
 import Post from "./Post";
 import classes from "./PostList.module.css";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function PostsList({ newPosting, onStopPosting }) {
-  const [enteredBody, setEnteredBody] = useState("");
-  const [enteredAuthor, setEnteredAuthor] = useState("");
+  const [posts, setPosts] = useState([]);
+  const [isFetching, setIsFetching] = useState(false);
 
-  function bodyChangeHandler() {
-    setEnteredBody(event.target.value);
-  }
+  useEffect(() => {
+    async function fetchPosts() {
+      setIsFetching(true);
+      const response = await fetch("http://localhost:8080/posts");
+      const resData = await response.json();
+      setPosts(resData.posts);
+      setIsFetching(false);
+    }
+    fetchPosts();
+  }, []);
 
-  function authorChangeHandler() {
-    setEnteredAuthor(event.target.value);
+  function addPostHandler(postData) {
+    fetch("http://localhost:8080/posts", {
+      method: "POST",
+      body: JSON.stringify(postData),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    setPosts((existingPosts) => [postData, ...existingPosts]);
   }
 
   return (
     <>
       {newPosting && (
         <Modal onClose={onStopPosting}>
-          <NewPost
-            onBodyChange={bodyChangeHandler}
-            onAuthorChange={authorChangeHandler}
-            onCancel={onStopPosting}
-          />
+          <NewPost onCancel={onStopPosting} onAaddPost={addPostHandler} />
         </Modal>
       )}
-      <ul className={classes.posts}>
-        <Post author={enteredAuthor} body={enteredBody} />
-        <Post author="Angga" body="test" />
-      </ul>
+      {!isFetching && posts.length > 0 && (
+        <ul className={classes.posts}>
+          {posts.map((post) => (
+            <Post key={post.body} author={post.author} body={post.body} />
+          ))}
+        </ul>
+      )}
+      {!isFetching && posts.length === 0 && (
+        <p style={{ textAlign: "center" }}>There are no posts yet!</p>
+      )}
+      {isFetching && <p style={{ textAlign: "center" }}>Loading...</p>}
     </>
   );
 }
